@@ -1,9 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
+import { Role, Status, User } from '../../data/postgres/models/user.model';
 import { JwtAdapter } from '../../config/jwt.adapter';
-import { User } from '../../data/postgres/models/user.model';
-import { Router } from 'express';
-import { UserController } from './controller';
-import { UserService } from '../services/user.service';
 
 export class AuthMiddleware {
 	static async verifyToken(req: Request, res: Response, next: NextFunction) {
@@ -30,7 +27,9 @@ export class AuthMiddleware {
 					.status(401)
 					.json({ message: 'Invalid token, please login again' });
 
-			const user = await User.findOne({ where: { id: payload.id } });
+			const user = await User.findOne({
+				where: { id: payload.id, status: Status.AVAILABLE },
+			});
 			req.body.sessionUser = user;
 
 			next();
@@ -41,25 +40,13 @@ export class AuthMiddleware {
 	}
 
 	static protect = AuthMiddleware.verifyToken;
-}
 
-export class UserRouter {
-	static get routes(): Router {
-		const router = Router();
-
-		const userService = new UserService();
-		const controller = new UserController(userService);
-
-		router.post('/login', controller.loginUser);
-		router.post('/', controller.createUser);
-
-		router.use(AuthMiddleware.protect);
-
-		router.get('/', controller.findAllUsers);
-		router.get('/:id', controller.findOneUser);
-		router.patch('/:id', controller.updateUser);
-		router.delete('/:id', controller.deleteUser);
-
-		return router;
-	}
+	static restrictTo = (roles: Role[]) => {
+		return (req: Request, res: Response, next: NextFunction) => {
+			if (!roles.includes(req.body.sessionUser.role)) {
+				return res.status(401).json({ message: 'You are not authorized' });
+			}
+			next();
+		};
+	};
 }

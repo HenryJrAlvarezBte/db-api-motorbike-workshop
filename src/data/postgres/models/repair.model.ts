@@ -9,14 +9,24 @@ export enum RepairStatus {
 @Entity()
 export class Repair extends BaseEntity {
 	@PrimaryGeneratedColumn('uuid')
-	id: string = '';
+	id!: string;
 
 	@Column('date', {
 		nullable: false,
 	})
 	date!: Date;
 
-	@Column({
+	@Column('varchar', {
+		nullable: true,
+	})
+	motorsNumber!: string;
+
+	@Column('varchar', {
+		nullable: false,
+	})
+	description!: string;
+
+	@Column('enum', {
 		enum: RepairStatus,
 		default: RepairStatus.PENDING,
 	})
@@ -25,5 +35,5 @@ export class Repair extends BaseEntity {
 	@Column('varchar', {
 		nullable: false,
 	})
-	userId: string = '';
+	userId!: string;
 }

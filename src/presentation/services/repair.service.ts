@@ -32,12 +32,15 @@ export class RepairService {
 	async create(data: CreateRepairDTO) {
 		const repair = new Repair();
 
-		repair.date = data.date;
+		repair.date = new Date(data.date);
 		repair.userId = data.userId;
+		repair.motorsNumber = data.motorsNumber;
+		repair.description = data.description;
 
 		try {
 			return await repair.save();
 		} catch (error) {
+			console.log(error);
 			throw CustomError.internalServer('Error creating repair');
 		}
 	}

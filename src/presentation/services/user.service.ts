@@ -1,7 +1,9 @@
+import { bcryptAdapter } from '../../config/bcrypt.adapter';
 import { Status, User } from '../../data/postgres/models/user.model';
 import { CustomError } from '../../domain';
 import { CreateUserDTO } from '../../domain/dtos/users/create-user.dto';
 import { UpdateUserDTO } from '../../domain/dtos/users/update-user.dto';
+import { JwtAdapter } from '../../config/jwt.adapter';
 
 export class UserService {
 	async findOne(id: string) {
@@ -34,26 +36,31 @@ export class UserService {
 	}
 
 	async create(data: CreateUserDTO) {
-		const existingUser = await User.findOne({
-			where: {
-				email: data.email,
-			},
-		});
-
-		if (existingUser) {
-			throw CustomError.badRequest('Email already in use');
-		}
-
 		const user = new User();
+
 		user.name = data.name;
 		user.email = data.email;
 		user.password = data.password;
 		user.role = data.role;
 
 		try {
-			return await user.save();
+			const newUser = await user.save();
+
+			const token = await JwtAdapter.generateToken({ id: newUser.id });
+			if (!token) throw new CustomError('TOKEN_ERROR', 404);
+
+			return {
+				token,
+				user: {
+					id: newUser.id,
+					name: newUser.name,
+					email: newUser.email,
+					role: newUser.role,
+				},
+			};
 		} catch (error) {
-			throw CustomError.internalServer('Error creating user');
+			console.error(error);
+			throw CustomError.internalServer('Error creating user.');
 		}
 	}
 
@@ -86,5 +93,41 @@ export class UserService {
 		} catch (error) {
 			throw CustomError.internalServer('Error deleting user');
 		}
+	}
+
+	async login(email: string, password: string) {
+		const user = await this.findUserByEmail(email);
+		if (!user) throw new CustomError('AUTH_ERROR', 404);
+
+		const passwordMatch = await bcryptAdapter.compare(password, user.password);
+		if (!passwordMatch) throw new CustomError('AUTH_ERROR', 404);
+
+		const token = JwtAdapter.generateToken({ id: user.id });
+		if (!token) throw new CustomError('TOKEN_ERROR', 404);
+
+		return {
+			token,
+			user: {
+				id: user.id,
+				name: user.name,
+				email: user.email,
+				role: user.role,
+			},
+		};
+	}
+
+	async findUserByEmail(email: string) {
+		const user = await User.findOne({
+			where: {
+				email,
+				status: Status.AVAILABLE,
+			},
+		});
+
+		if (!user) {
+			throw CustomError.notFound('User not found');
+		}
+
+		return user;
 	}
 }

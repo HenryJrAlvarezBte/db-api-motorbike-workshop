@@ -45,7 +45,7 @@ export class UserController {
 
 		try {
 			const data = await this.userService.create(createUserDto!);
-			return res.status(201).json(data); // Código 201 para creación exitosa
+			return res.status(201).json(data);
 		} catch (error) {
 			this.handleError(error, res);
 		}
@@ -72,9 +72,18 @@ export class UserController {
 
 		try {
 			await this.userService.delete(id);
-			return res.status(204).send(); // Sin cuerpo, código 204
+			return res.status(204).send();
 		} catch (error) {
 			this.handleError(error, res);
 		}
+	};
+
+	loginUser = (req: Request, res: Response) => {
+		const { email, password } = req.body;
+
+		this.userService
+			.login(email, password)
+			.then((data) => res.status(200).json(data))
+			.catch((error: any) => this.handleError(error, res));
 	};
 }

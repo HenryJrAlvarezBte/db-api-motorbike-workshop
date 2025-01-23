@@ -1,4 +1,11 @@
-import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+	BaseEntity,
+	Column,
+	Entity,
+	PrimaryGeneratedColumn,
+	BeforeInsert,
+} from 'typeorm';
+import { bcryptAdapter } from '../../../config/bcrypt.adapter';
 
 export enum Role {
 	EMPLOYEE = 'EMPLOYEE',
@@ -16,15 +23,12 @@ export class User extends BaseEntity {
 	id!: string;
 
 	@Column('varchar', {
-		length: 80,
 		nullable: false,
 	})
 	name!: string;
 
 	@Column('varchar', {
-		length: 80,
 		nullable: false,
-		unique: true,
 	})
 	email!: string;
 
@@ -44,4 +48,9 @@ export class User extends BaseEntity {
 		default: Status.AVAILABLE,
 	})
 	status!: Status;
+
+	@BeforeInsert()
+	async hashPassword() {
+		this.password = await bcryptAdapter.encrypt(this.password);
+	}
 }
